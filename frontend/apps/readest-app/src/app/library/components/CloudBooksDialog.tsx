@@ -15,7 +15,7 @@ import { registerDevice } from "@/services/api/devices";
 
 interface CloudBooksDialogProps {
   onClose: () => void;
-  onImportBook?: (url: string, title: string) => void;
+  onImportBook?: (url: string, title: string, cloudBookId: number) => void;
 }
 
 export function CloudBooksDialog({ onClose, onImportBook }: CloudBooksDialogProps) {
@@ -72,10 +72,10 @@ export function CloudBooksDialog({ onClose, onImportBook }: CloudBooksDialogProp
 
   // 打开书籍（下载 EPUB 并导入本地阅读器）
   const handleOpenBook = (book: BookInfo) => {
-    // 通过后端 API 下载 EPUB 文件
-    const downloadUrl = `${process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8000/api/v1"}/books/${book.id}/download`;
+    const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8000/api/v1";
+    const downloadUrl = `${baseUrl}/books/${book.id}/download`;
     if (onImportBook) {
-      onImportBook(downloadUrl, book.title);
+      onImportBook(downloadUrl, book.title, book.id);
     }
   };
 

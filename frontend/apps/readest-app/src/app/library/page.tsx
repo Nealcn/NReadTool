@@ -608,7 +608,7 @@ const LibraryPageContent = ({ searchParams }: { searchParams: ReadonlyURLSearchP
     navigateToLibrary(router, `${params.toString()}`);
   };
 
-  const handleImportBookFromCloud = async (url: string, title: string) => {
+  const handleImportBookFromCloud = async (url: string, title: string, cloudBookId: number) => {
     try {
       const response = await fetch(url);
       const blob = await response.blob();
@@ -617,6 +617,16 @@ const LibraryPageContent = ({ searchParams }: { searchParams: ReadonlyURLSearchP
       });
       const selectedFile = { file, name: file.name, path: file.name } as SelectedFile;
       await importBooks([selectedFile], '');
+      // 找刚导入的书，保存 cloudBookId 映射
+      const { library } = useLibraryStore.getState();
+      const imported = library.find(
+        (b) => b.title === title || b.sourceTitle === title,
+      );
+      if (imported) {
+        import('@/app/reader/hooks/useCloudProgress').then((m) =>
+          m.storeCloudBookId(imported.hash, cloudBookId),
+        );
+      }
     } catch (err) {
       console.error('Failed to import book from cloud:', err);
     }

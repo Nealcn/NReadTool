@@ -21,6 +21,7 @@ import { usePagination, viewPagination } from '../hooks/usePagination';
 import { useFoliateEvents } from '../hooks/useFoliateEvents';
 import { useProgressSync } from '../hooks/useProgressSync';
 import { useProgressAutoSave } from '../hooks/useProgressAutoSave';
+import { useCloudProgress } from '../hooks/useCloudProgress';
 import { useBackgroundTexture } from '@/hooks/useBackgroundTexture';
 import { useAutoFocus } from '@/hooks/useAutoFocus';
 import { useTranslation } from '@/hooks/useTranslation';
@@ -173,6 +174,7 @@ const FoliateViewer: React.FC<{
   useUICSS(bookKey);
   useProgressSync(bookKey);
   useProgressAutoSave(bookKey);
+  useCloudProgress(bookKey);
   useBookCoverAutoSave(bookKey);
   const { syncState, conflictDetails, resolveWithLocal, resolveWithRemote } = useKOSync(bookKey);
   useFileSync(bookKey);
