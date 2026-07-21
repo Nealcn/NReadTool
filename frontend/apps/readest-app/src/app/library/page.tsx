@@ -77,6 +77,7 @@ import { KeyboardShortcutsHelp } from '@/components/KeyboardShortcutsHelp';
 import { BookDetailModal } from '@/components/metadata';
 import { UpdaterWindow } from '@/components/UpdaterWindow';
 import { CatalogDialog } from './components/OPDSDialog';
+import { CloudBooksDialog } from './components/CloudBooksDialog';
 import { FeedsView } from './components/feeds/FeedsView';
 import AddFeedModal from './components/feeds/AddFeedModal';
 import { fetchAndParseFeed } from '@/services/rss/feedClient';
@@ -204,6 +205,7 @@ const LibraryPageContent = ({ searchParams }: { searchParams: ReadonlyURLSearchP
   const [showCatalogManager, setShowCatalogManager] = useState(
     searchParams?.get('opds') === 'true',
   );
+  const [showCloudBooks, setShowCloudBooks] = useState(false);
   const [showFeeds, setShowFeeds] = useState(false);
   const [showAddFeed, setShowAddFeed] = useState(false);
   const [showImportFromUrl, setShowImportFromUrl] = useState(false);
@@ -591,11 +593,33 @@ const LibraryPageContent = ({ searchParams }: { searchParams: ReadonlyURLSearchP
     setShowCatalogManager(true);
   };
 
+  const handleShowCloudBooks = () => {
+    setShowCloudBooks(true);
+  };
+
+  const handleDismissCloudBooks = () => {
+    setShowCloudBooks(false);
+  };
+
   const handleDismissOPDSDialog = () => {
     setShowCatalogManager(false);
     const params = new URLSearchParams(searchParams?.toString());
     params.delete('opds');
     navigateToLibrary(router, `${params.toString()}`);
+  };
+
+  const handleImportBookFromCloud = async (url: string, title: string) => {
+    try {
+      const response = await fetch(url);
+      const blob = await response.blob();
+      const file = new File([blob], `${title.replace(/[\\/:*?"<>|]/g, '_')}.epub`, {
+        type: 'application/epub+zip',
+      });
+      const selectedFile = { file, name: file.name, path: file.name } as SelectedFile;
+      await importBooks([selectedFile], '');
+    } catch (err) {
+      console.error('Failed to import book from cloud:', err);
+    }
   };
 
   useEffect(() => {
@@ -1557,6 +1581,7 @@ const LibraryPageContent = ({ searchParams }: { searchParams: ReadonlyURLSearchP
           onImportBookFromUrl={isTauriAppPlatform() ? () => setShowImportFromUrl(true) : undefined}
           onOpenCatalogManager={handleShowOPDSDialog}
           onOpenFeeds={handleShowFeeds}
+          onOpenCloudBooks={handleShowCloudBooks}
           onToggleSelectMode={() => handleSetSelectMode(!isSelectMode)}
           onSelectAll={handleSelectAll}
           onDeselectAll={handleDeselectAll}
@@ -1690,6 +1715,12 @@ const LibraryPageContent = ({ searchParams }: { searchParams: ReadonlyURLSearchP
       <CacheManagerWindow />
       {isSettingsDialogOpen && <SettingsDialog bookKey={''} />}
       {showCatalogManager && <CatalogDialog onClose={handleDismissOPDSDialog} />}
+      {showCloudBooks && (
+        <CloudBooksDialog
+          onClose={handleDismissCloudBooks}
+          onImportBook={handleImportBookFromCloud}
+        />
+      )}
       {showFeeds && <FeedsView onClose={() => setShowFeeds(false)} />}
       <AddFeedModal
         isOpen={showAddFeed}

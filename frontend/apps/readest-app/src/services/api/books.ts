@@ -68,9 +68,8 @@ export async function uploadBook(
 }
 
 export async function getBookList(deviceId: string): Promise<BookListResponse> {
-  const response = await apiPost<{ code: number; data: BookListResponse }>(
-    "/books",
-    { device_id: deviceId },
+  const response = await apiGet<{ code: number; data: BookListResponse }>(
+    `/books?device_id=${encodeURIComponent(deviceId)}`,
   );
   return response.data;
 }

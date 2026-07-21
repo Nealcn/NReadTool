@@ -1,7 +1,9 @@
 """书籍管理接口"""
 
 import tempfile
-from fastapi import APIRouter, Depends, UploadFile, File, Form
+import os
+from fastapi import APIRouter, Depends, UploadFile, File, Form, Query
+from fastapi.responses import FileResponse, JSONResponse
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
@@ -73,7 +75,7 @@ async def upload_book(
 
 @router.get("", response_model=ApiResponse)
 async def get_book_list(
-    device_id: str = Form(...),
+    device_id: str = Query(...),
     db: Session = Depends(get_db),
 ):
     """获取书籍列表"""
@@ -129,3 +131,19 @@ async def get_chapter_content(
         title=content.chapter_title,
         html_content=content.html_content,
     ).model_dump())
+
+
+@router.get("/{book_id}/download")
+async def download_book(book_id: int, db: Session = Depends(get_db)):
+    """下载 EPUB 源文件"""
+    book = EpubService.get_book(db, book_id)
+    if not os.path.exists(book.file_path):
+        return JSONResponse(
+            status_code=404,
+            content={"code": 40008, "message": "文件不存在", "data": None},
+        )
+    return FileResponse(
+        path=book.file_path,
+        filename=book.file_name or f"{book.title}.epub",
+        media_type="application/epub+zip",
+    )

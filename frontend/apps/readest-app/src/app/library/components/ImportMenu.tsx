@@ -1,6 +1,6 @@
 import clsx from 'clsx';
 import { MdLink, MdRssFeed } from 'react-icons/md';
-import { LuLibrary } from 'react-icons/lu';
+import { LuLibrary, LuCloud } from 'react-icons/lu';
 import { IoFileTray } from 'react-icons/io5';
 import { useEnv } from '@/context/EnvContext';
 import { useTranslation } from '@/hooks/useTranslation';
@@ -14,6 +14,7 @@ interface ImportMenuProps {
   onImportBookFromUrl?: () => void;
   onOpenCatalogManager: () => void;
   onOpenFeeds: () => void;
+  onOpenCloudBooks?: () => void;
 }
 
 const ImportMenu: React.FC<ImportMenuProps> = ({
@@ -23,6 +24,7 @@ const ImportMenu: React.FC<ImportMenuProps> = ({
   onImportBookFromUrl,
   onOpenCatalogManager,
   onOpenFeeds,
+  onOpenCloudBooks,
 }) => {
   const _ = useTranslation();
   const { appService } = useEnv();
@@ -49,6 +51,11 @@ const ImportMenu: React.FC<ImportMenuProps> = ({
 
   const handleOpenFeeds = () => {
     onOpenFeeds();
+    setIsDropdownOpen?.(false);
+  };
+
+  const handleOpenCloudBooks = () => {
+    onOpenCloudBooks?.();
     setIsDropdownOpen?.(false);
   };
 
@@ -85,6 +92,11 @@ const ImportMenu: React.FC<ImportMenuProps> = ({
         label={appService?.isOnlineCatalogsAccessible ? _('Online Library') : _('OPDS Catalogs')}
         Icon={<LuLibrary className='h-5 w-5' />}
         onClick={handleOpenCatalogManager}
+      />
+      <MenuItem
+        label={_('Cloud Books')}
+        Icon={<LuCloud className='h-5 w-5' />}
+        onClick={handleOpenCloudBooks}
       />
     </Menu>
   );
