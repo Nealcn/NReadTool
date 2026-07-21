@@ -13,6 +13,7 @@ import { createRejectFilter } from '@/utils/node';
 import { WebSpeechClient } from './WebSpeechClient';
 import { NativeTTSClient } from './NativeTTSClient';
 import { EdgeTTSClient } from './EdgeTTSClient';
+import { BackendTTSClient } from './BackendTTSClient';
 import { SectionTimeline, TimelineSentence } from './SectionTimeline';
 import { hydrateProvisionalDurations } from './ttsDuration';
 import { DownloadableSentence, SectionEnumerator, TTSDownloader } from './TTSDownloader';
@@ -171,9 +172,11 @@ export class TTSController extends EventTarget {
   ttsClient: TTSClient;
   ttsWebClient: TTSClient;
   ttsEdgeClient: EdgeTTSClient;
+  ttsBackendClient: BackendTTSClient;
   ttsNativeClient: TTSClient | null = null;
   ttsWebVoices: TTSVoice[] = [];
   ttsEdgeVoices: TTSVoice[] = [];
+  ttsBackendVoices: TTSVoice[] = [];
   ttsNativeVoices: TTSVoice[] = [];
   ttsTargetLang: string = '';
 
@@ -188,6 +191,7 @@ export class TTSController extends EventTarget {
   ) {
     super();
     this.ttsWebClient = new WebSpeechClient(this);
+    this.ttsBackendClient = new BackendTTSClient(this, appService);
     this.ttsEdgeClient = new EdgeTTSClient(this, appService);
     // Native TTS is backed by Android TextToSpeech and iOS AVSpeechSynthesizer.
     // TODO: implement native TTS client for desktop platforms.
@@ -344,16 +348,22 @@ export class TTSController extends EventTarget {
   }
 
   async init() {
+    // 优先初始化 WebSpeech（浏览器内置 TTS，离线可用，无需认证）
+    // 其次 Backend TTS（通过后端代理 Edge TTS，绕过网络限制）
+    // Edge TTS 直连微软云端服务兜底。
     const availableClients = [];
+    if (await this.ttsWebClient.init()) {
+      availableClients.push(this.ttsWebClient);
+    }
+    if (await this.ttsBackendClient.init()) {
+      availableClients.push(this.ttsBackendClient);
+    }
     if (await this.ttsEdgeClient.init()) {
       availableClients.push(this.ttsEdgeClient);
     }
     if (this.ttsNativeClient && (await this.ttsNativeClient.init())) {
       availableClients.push(this.ttsNativeClient);
       this.ttsNativeVoices = await this.ttsNativeClient.getAllVoices();
-    }
-    if (await this.ttsWebClient.init()) {
-      availableClients.push(this.ttsWebClient);
     }
     this.ttsClient = availableClients[0] || this.ttsWebClient;
     const preferredClientName = TTSUtils.getPreferredClient();
@@ -366,6 +376,7 @@ export class TTSController extends EventTarget {
       }
     }
     this.ttsWebVoices = await this.ttsWebClient.getAllVoices();
+    this.ttsBackendVoices = await this.ttsBackendClient.getAllVoices();
     this.ttsEdgeVoices = await this.ttsEdgeClient.getAllVoices();
   }
 
@@ -673,7 +684,7 @@ export class TTSController extends EventTarget {
   // scrubber renders a reserved disabled slot while true and info is still
   // null, and hides entirely while false.
   supportsPlaybackInfo(): boolean {
-    return this.ttsClient === this.ttsEdgeClient;
+    return this.ttsClient === this.ttsEdgeClient || this.ttsClient === this.ttsBackendClient;
   }
 
   // Whether the active client supports the inter-sentence gap control.
@@ -685,6 +696,7 @@ export class TTSController extends EventTarget {
   // always a constructed instance, whether or not it's the currently active
   // client (same as supportsPlaybackInfo/supportsGapControl's comparison).
   setSentenceGap(sec: number): void {
+    this.ttsBackendClient.setSentenceGap(sec);
     this.ttsEdgeClient.setSentenceGap(sec);
   }
 
@@ -1135,6 +1147,7 @@ export class TTSController extends EventTarget {
   }
 
   async setPrimaryLang(lang: string) {
+    if (this.ttsBackendClient.initialized) this.ttsBackendClient.setPrimaryLang(lang);
     if (this.ttsEdgeClient.initialized) this.ttsEdgeClient.setPrimaryLang(lang);
     if (this.ttsWebClient.initialized) this.ttsWebClient.setPrimaryLang(lang);
     if (this.ttsNativeClient?.initialized) this.ttsNativeClient?.setPrimaryLang(lang);
@@ -1149,22 +1162,29 @@ export class TTSController extends EventTarget {
 
   async getVoices(lang: string) {
     const ttsWebVoices = await this.ttsWebClient.getVoices(lang);
+    const ttsBackendVoices = await this.ttsBackendClient.getVoices(lang);
     const ttsEdgeVoices = await this.ttsEdgeClient.getVoices(lang);
     const ttsNativeVoices = (await this.ttsNativeClient?.getVoices(lang)) ?? [];
 
-    const voicesGroups = [...ttsNativeVoices, ...ttsEdgeVoices, ...ttsWebVoices];
+    const voicesGroups = [...ttsNativeVoices, ...ttsBackendVoices, ...ttsEdgeVoices, ...ttsWebVoices];
     return voicesGroups;
   }
 
   async setVoice(voiceId: string, lang: string) {
     this.state = 'setvoice-paused';
+    const useBackendTTS = !!this.ttsBackendVoices.find(
+      (voice) => (voiceId === '' || voice.id === voiceId) && !voice.disabled,
+    );
     const useEdgeTTS = !!this.ttsEdgeVoices.find(
       (voice) => (voiceId === '' || voice.id === voiceId) && !voice.disabled,
     );
     const useNativeTTS = !!this.ttsNativeVoices.find(
       (voice) => (voiceId === '' || voice.id === voiceId) && !voice.disabled,
     );
-    if (useEdgeTTS) {
+    if (useBackendTTS) {
+      this.ttsClient = this.ttsBackendClient;
+      await this.ttsClient.setRate(this.ttsRate);
+    } else if (useEdgeTTS) {
       this.ttsClient = this.ttsEdgeClient;
       await this.ttsClient.setRate(this.ttsRate);
     } else if (useNativeTTS) {
@@ -1428,6 +1448,9 @@ export class TTSController extends EventTarget {
     this.view.tts = null;
     if (this.ttsWebClient.initialized) {
       await this.ttsWebClient.shutdown();
+    }
+    if (this.ttsBackendClient.initialized) {
+      await this.ttsBackendClient.shutdown();
     }
     if (this.ttsEdgeClient.initialized) {
       await this.ttsEdgeClient.shutdown();

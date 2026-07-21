@@ -1,0 +1,3 @@
+[submodule "frontend/packages/simplecc-wasm"]
+	path = frontend/packages/simplecc-wasm
+	url = https://github.com/readest/simplecc-wasm.git

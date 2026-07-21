@@ -49,18 +49,18 @@ class BookNotFoundException(AppException):
 
 
 class AIRequestTimeoutException(AppException):
-    def __init__(self):
-        super().__init__(code=50001, message="AI 服务繁忙，请稍后重试", status_code=504)
+    def __init__(self, message: str = "AI 服务繁忙，请稍后重试"):
+        super().__init__(code=50001, message=message, status_code=504)
 
 
 class AIRateLimitException(AppException):
-    def __init__(self):
-        super().__init__(code=50002, message="请求过于频繁，请稍后再试", status_code=429)
+    def __init__(self, message: str = "请求过于频繁，请稍后再试"):
+        super().__init__(code=50002, message=message, status_code=429)
 
 
 class AIServiceUnavailableException(AppException):
-    def __init__(self):
-        super().__init__(code=50003, message="AI 服务暂不可用", status_code=503)
+    def __init__(self, message: str = "AI 服务暂不可用"):
+        super().__init__(code=50003, message=message, status_code=503)
 
 
 async def app_exception_handler(request: Request, exc: AppException):
