@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git init *)",
+      "Bash(git branch *)",
+      "Bash(alembic init *)",
+      "Bash(python -m alembic revision --autogenerate -m \"init_tables\")",
+      "Bash(python -m alembic upgrade head)"
+    ]
+  }
+}
