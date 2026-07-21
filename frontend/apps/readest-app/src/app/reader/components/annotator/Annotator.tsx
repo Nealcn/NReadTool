@@ -87,6 +87,7 @@ import ModalPortal from '@/components/ModalPortal';
 import { useFileSelector } from '@/hooks/useFileSelector';
 import { parseMrexpt } from '@/utils/mrexpt';
 import { aiExplain } from '@/services/api/ai';
+import AIChatDialog from './AIChatDialog';
 import {
   convertMrexptEntriesToBookNotes,
   mergeImportedBookNotes,
@@ -160,9 +161,8 @@ const Annotator: React.FC<{ bookKey: string; contentInsets: Insets }> = ({
   const [showExportDialog, setShowExportDialog] = useState(false);
   const [showImportDialog, setShowImportDialog] = useState(false);
   const [importingMrexpt, setImportingMrexpt] = useState(false);
-  const [aiResult, setAiResult] = useState<string | null>(null);
-  const [aiLoading, setAiLoading] = useState(false);
-  const [aiError, setAiError] = useState<string | null>(null);
+  const [showAIChat, setShowAIChat] = useState(false);
+  const [aiChatText, setAIChatText] = useState("");
   // "Clear Annotations" confirm dialog. Hosted here (and not in BookMenu)
   // because the menu unmounts the moment the user picks the entry, which
   // would otherwise tear down the dialog state immediately.
@@ -1115,27 +1115,10 @@ const Annotator: React.FC<{ bookKey: string; contentInsets: Insets }> = ({
     handleDismissPopupAndSelection();
   };
 
-  const handleAIExplain = async () => {
+  const handleAIExplain = () => {
     if (!selection?.text) return;
-    setAiLoading(true);
-    setAiError(null);
-    setAiResult(null);
-    try {
-      const text = selection.text.trim().substring(0, 2000);
-      const result = await aiExplain({ text, type: 'sentence' });
-      setAiResult(result.explanation);
-    } catch (err: unknown) {
-      const msg = (err as { message?: string })?.message || 'AI 服务暂不可用';
-      setAiError(msg);
-    } finally {
-      setAiLoading(false);
-    }
-  };
-
-  const dismissAIResult = () => {
-    setAiResult(null);
-    setAiError(null);
-    setAiLoading(false);
+    setAIChatText(selection.text.trim().substring(0, 2000));
+    setShowAIChat(true);
   };
 
   const handleHighlight = (update = false, highlightStyle?: HighlightStyle): BookNote | null => {
@@ -1902,63 +1885,70 @@ const Annotator: React.FC<{ bookKey: string; contentInsets: Insets }> = ({
           </div>
         </div>
       )}
-      {/* AI Explanation Result */}
-      {(aiResult || aiError || aiLoading) && (
-        <ModalPortal>
-          <div
-            className='fixed inset-0 z-50 flex items-center justify-center bg-black/20'
-            onClick={dismissAIResult}
-          >
-            <div
-              className='bg-base-100 mx-4 max-h-[60vh] w-full max-w-md overflow-y-auto rounded-xl p-5 shadow-2xl'
-              onClick={(e) => e.stopPropagation()}
-            >
-              <div className='mb-3 flex items-center justify-between'>
-                <span className='text-sm font-bold'>AI 解读</span>
-                <button
-                  onClick={dismissAIResult}
-                  className='text-base-content/50 hover:text-base-content'
-                >
-                  ✕
-                </button>
-              </div>
-              {selection?.text && (
-                <div className='bg-base-200 mb-3 rounded-lg p-3'>
-                  <p className='text-base-content/50 text-xs mb-1'>选中文本</p>
-                  <p className='text-sm line-clamp-2'>{selection.text.substring(0, 200)}</p>
-                  {selection.text.length > 200 && (
-                    <p className='text-xs mt-1 opacity-50'>...已截断</p>
-                  )}
-                </div>
-              )}
-              <div className='min-h-[60px]'>
-                {aiLoading && (
-                  <div className='flex items-center justify-center py-6'>
-                    <div className='border-primary h-6 w-6 animate-spin rounded-full border-2 border-t-transparent' />
-                    <span className='ml-2 text-sm opacity-60'>AI 思考中...</span>
-                  </div>
-                )}
-                {aiError && (
-                  <div className='text-center py-4'>
-                    <p className='text-sm text-red-500'>{aiError}</p>
-                    <button
-                      onClick={handleAIExplain}
-                      className='btn btn-primary btn-sm mt-2'
-                    >
-                      重试
-                    </button>
-                  </div>
-                )}
-                {aiResult && (
-                  <div className='prose prose-sm max-w-none whitespace-pre-wrap text-sm leading-relaxed'>
-                    {aiResult}
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-        </ModalPortal>
-      )}
+      <AIChatDialog
+        isOpen={showAIChat}
+        selectedText={aiChatText}
+        bookId={bookData.book?.id}
+        chapterTitle={progress?.sectionLabel}
+        onClose={() => setShowAIChat(false)}
+      />
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
     </div>
   );
 };

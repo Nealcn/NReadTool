@@ -39,3 +39,22 @@ export async function aiHealth(): Promise<AIHealthResponse> {
   );
   return response.data;
 }
+
+export interface ChatMessage {
+  role: "user" | "assistant" | "system";
+  content: string;
+}
+
+export interface ChatRequest {
+  messages: ChatMessage[];
+  book_id?: number;
+  chapter_title?: string;
+}
+
+export async function aiChat(req: ChatRequest): Promise<{ reply: string }> {
+  const response = await apiPost<{ code: number; data: { reply: string } }>(
+    "/ai/chat",
+    req,
+  );
+  return response.data;
+}

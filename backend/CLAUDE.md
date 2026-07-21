@@ -1,7 +1,5 @@
-AGENTS.md
-
 <!-- MEMORY:START -->
-# readest-app
+# backend
 
 _Last updated: 2026-07-21 | 0 active memories, 0 total_
 
