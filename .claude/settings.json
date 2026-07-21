@@ -5,7 +5,11 @@
       "Bash(git branch *)",
       "Bash(alembic init *)",
       "Bash(python -m alembic revision --autogenerate -m \"init_tables\")",
-      "Bash(python -m alembic upgrade head)"
+      "Bash(python -m alembic upgrade head)",
+      "Read(//c//**)",
+      "Bash(rm -rf /c/Users/CuiYu/Desktop/bookread/frontend/packages/foliate-js)",
+      "Bash(rm -rf \"/c/Users/CuiYu/Desktop/bookread/frontend/packages/foliate-js\")",
+      "Bash(echo \"exit: $?\")"
     ]
   }
 }
