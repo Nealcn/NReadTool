@@ -4,31 +4,32 @@
  */
 
 import { useEffect, useRef, useCallback } from "react";
-import { useBookProgress } from "@/store/readerProgressStore";
+import { useBookProgress, getBookProgress } from "@/store/readerProgressStore";
 import { saveReadingProgress } from "@/services/api/reading";
-import { getDeviceId } from "@/utils/device";
 import { debounce } from "@/utils/debounce";
 
 export function useCloudProgress(bookHash: string) {
   const progress = useBookProgress(bookHash);
   const lastFractionRef = useRef<number>(-1);
+  const hashRef = useRef(bookHash);
+  hashRef.current = bookHash;
 
   const syncProgress = useCallback(
     debounce(async () => {
-      const p = useBookProgress(bookHash);
+      const p = getBookProgress(hashRef.current);
       if (!p) return;
       const fraction = p.fraction ?? 0;
       if (Math.abs(fraction - lastFractionRef.current) < 0.01) return;
       lastFractionRef.current = fraction;
       try {
-        await saveReadingProgress(bookHash, {
+        await saveReadingProgress(hashRef.current, {
           spine_index: 0,
           content_id: 0,
           scroll_percent: fraction,
         });
       } catch { /* 静默 */ }
     }, 3000),
-    [bookHash],
+    [],
   );
 
   useEffect(() => { syncProgress(); }, [progress, syncProgress]);
