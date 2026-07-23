@@ -30,17 +30,12 @@ export default function AIChatDialog({
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  // 打开时自动发送首条消息
+  // 打开时预填文本到输入框，但不自动发送
   useEffect(() => {
     if (isOpen && !hasInitialized && selectedText) {
       setHasInitialized(true);
       setMessages([]);
-      const initialMsg: ChatMessage = {
-        role: "user",
-        content: `请解读以下文本：\n\n${selectedText}`,
-      };
-      setMessages([initialMsg]);
-      sendMessage([initialMsg]);
+      setInput(selectedText);
     }
   }, [isOpen, selectedText, hasInitialized]);
 

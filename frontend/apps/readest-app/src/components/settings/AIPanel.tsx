@@ -100,6 +100,16 @@ const AIPanel: React.FC = () => {
   const [openrouterFetchingModels, setOpenrouterFetchingModels] = useState(false);
   const [openrouterModelsError, setOpenrouterModelsError] = useState('');
 
+  // ---- DeepSeek state ----
+  const [deepseekApiKey, setDeepseekApiKey] = useState(settings?.deepseekApiKey ?? '');
+  const [deepseekBaseUrl, setDeepseekBaseUrl] = useState(
+    settings?.deepseekBaseUrl ?? DEFAULT_AI_SETTINGS.deepseekBaseUrl ?? '',
+  );
+  const [deepseekModel, setDeepseekModel] = useState(settings?.deepseekModel ?? '');
+  const [deepseekEmbeddingModel, setDeepseekEmbeddingModel] = useState(
+    settings?.deepseekEmbeddingModel ?? '',
+  );
+
   const savedCustomModel = aiSettings.aiGatewayCustomModel ?? '';
   const savedModel = aiSettings.aiGatewayModel ?? DEFAULT_AI_SETTINGS.aiGatewayModel ?? '';
   const isCustomModelSaved = savedCustomModel.length > 0;
@@ -288,6 +298,39 @@ const AIPanel: React.FC = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [openrouterEmbeddingModel]);
 
+  // ---- DeepSeek save effects ----
+  useEffect(() => {
+    if (!isMounted.current) return;
+    if (deepseekApiKey !== (settings?.deepseekApiKey ?? '')) {
+      saveAiSetting('deepseekApiKey', deepseekApiKey);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [deepseekApiKey]);
+
+  useEffect(() => {
+    if (!isMounted.current) return;
+    if (deepseekBaseUrl !== (settings?.deepseekBaseUrl ?? '')) {
+      saveAiSetting('deepseekBaseUrl', deepseekBaseUrl);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [deepseekBaseUrl]);
+
+  useEffect(() => {
+    if (!isMounted.current) return;
+    if (deepseekModel !== (settings?.deepseekModel ?? '')) {
+      saveAiSetting('deepseekModel', deepseekModel);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [deepseekModel]);
+
+  useEffect(() => {
+    if (!isMounted.current) return;
+    if (deepseekEmbeddingModel !== (settings?.deepseekEmbeddingModel ?? '')) {
+      saveAiSetting('deepseekEmbeddingModel', deepseekEmbeddingModel);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [deepseekEmbeddingModel]);
+
   // Get the effective model ID to use (either selected or custom)
   const getEffectiveModelId = useCallback(() => {
     if (selectedModel === CUSTOM_MODEL_VALUE && customModelStatus === 'valid') {
@@ -441,6 +484,16 @@ const AIPanel: React.FC = () => {
             className='radio'
             checked={provider === 'openrouter'}
             onChange={() => setProvider('openrouter')}
+            disabled={!enabled}
+          />
+        </SettingsRow>
+        <SettingsRow label={_('DeepSeek')} asLabel>
+          <input
+            type='radio'
+            name='ai-provider'
+            className='radio'
+            checked={provider === 'deepseek'}
+            onChange={() => setProvider('deepseek')}
             disabled={!enabled}
           />
         </SettingsRow>
@@ -737,6 +790,58 @@ const AIPanel: React.FC = () => {
               {_(
                 'Optional. Leave blank if your endpoint does not support embeddings — chat will still work but RAG features will be unavailable.',
               )}
+            </span>
+          </div>
+        </BoxedList>
+      )}
+
+      {provider === 'deepseek' && (
+        <BoxedList title={_('DeepSeek Configuration')} className={disabledSection}>
+          <div className='flex flex-col gap-2 py-3 pe-4'>
+            <SettingLabel>{_('API Key')}</SettingLabel>
+            <input
+              type='password'
+              className='input input-bordered input-sm w-full'
+              value={deepseekApiKey}
+              onChange={(e) => setDeepseekApiKey(e.target.value)}
+              placeholder='sk-...'
+              disabled={!enabled}
+            />
+          </div>
+          <div className='flex flex-col gap-2 py-3 pe-4'>
+            <SettingLabel>{_('Base URL')}</SettingLabel>
+            <input
+              type='text'
+              className='input input-bordered input-sm w-full'
+              value={deepseekBaseUrl}
+              onChange={(e) => setDeepseekBaseUrl(e.target.value)}
+              placeholder='https://api.deepseek.com/v1'
+              disabled={!enabled}
+            />
+          </div>
+          <div className='flex flex-col gap-2 py-3 pe-4'>
+            <SettingLabel>{_('Model')}</SettingLabel>
+            <input
+              type='text'
+              className='input input-bordered input-sm w-full'
+              value={deepseekModel}
+              onChange={(e) => setDeepseekModel(e.target.value)}
+              placeholder='deepseek-chat'
+              disabled={!enabled}
+            />
+          </div>
+          <div className='flex flex-col gap-2 py-3 pe-4'>
+            <SettingLabel>{_('Embedding Model')}</SettingLabel>
+            <input
+              type='text'
+              className='input input-bordered input-sm w-full'
+              value={deepseekEmbeddingModel}
+              onChange={(e) => setDeepseekEmbeddingModel(e.target.value)}
+              placeholder='(留空以禁用 RAG)'
+              disabled={!enabled}
+            />
+            <span className='text-base-content/60 text-xs'>
+              {_('Optional. Leave blank if your endpoint does not support embeddings — chat will still work but RAG features will be unavailable.')}
             </span>
           </div>
         </BoxedList>

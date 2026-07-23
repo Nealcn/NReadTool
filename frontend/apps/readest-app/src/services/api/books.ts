@@ -1,11 +1,11 @@
 /**
- * 书籍管理 API
+ * 书籍管理 API — 主键改为 file_hash
  */
 
 import { apiGet, apiPost, apiPut, apiDelete } from "./api";
 
 export interface BookInfo {
-  id: number;
+  file_hash: string;
   title: string;
   author?: string;
   cover_image?: string;
@@ -41,77 +41,41 @@ export interface BookListResponse {
   total: number;
 }
 
-export async function uploadBook(
-  file: File,
-  deviceId: string,
-  onProgress?: (percent: number) => void,
-): Promise<BookInfo> {
+export async function uploadBook(file: File): Promise<BookInfo> {
   const formData = new FormData();
   formData.append("file", file);
-  formData.append("device_id", deviceId);
-
   const response = await apiPost<{ code: number; data: BookInfo }>(
-    "/books/upload",
-    formData,
-    {
-      headers: { "Content-Type": "multipart/form-data" },
-      onUploadProgress: onProgress
-        ? (e) => {
-            if (e.total) {
-              onProgress(Math.round((e.loaded * 100) / e.total));
-            }
-          }
-        : undefined,
-    },
+    "/books/upload", formData,
+    { headers: { "Content-Type": "multipart/form-data" } },
   );
   return response.data;
 }
 
-export async function getBookList(deviceId: string): Promise<BookListResponse> {
-  const response = await apiGet<{ code: number; data: BookListResponse }>(
-    `/books?device_id=${encodeURIComponent(deviceId)}`,
-  );
+export async function getBookList(): Promise<BookListResponse> {
+  const response = await apiGet<{ code: number; data: BookListResponse }>("/books");
   return response.data;
 }
 
-export async function getBookDetail(bookId: number): Promise<BookDetail> {
-  const response = await apiGet<{ code: number; data: BookDetail }>(
-    `/books/${bookId}`,
-  );
+export async function getBookDetail(bookHash: string): Promise<BookDetail> {
+  const response = await apiGet<{ code: number; data: BookDetail }>(`/books/${bookHash}`);
   return response.data;
 }
 
-export async function renameBook(
-  bookId: number,
-  title: string,
-): Promise<BookInfo> {
-  const response = await apiPut<{ code: number; data: BookInfo }>(
-    `/books/${bookId}`,
-    { title },
-  );
+export async function renameBook(bookHash: string, title: string): Promise<BookInfo> {
+  const response = await apiPut<{ code: number; data: BookInfo }>(`/books/${bookHash}`, { title });
   return response.data;
 }
 
-export async function deleteBook(bookId: number): Promise<void> {
-  await apiDelete(`/books/${bookId}`);
+export async function deleteBook(bookHash: string): Promise<void> {
+  await apiDelete(`/books/${bookHash}`);
 }
 
-export async function getBookTOC(
-  bookId: number,
-): Promise<{ book_id: number; items: TOCItem[] }> {
-  const response = await apiGet<{
-    code: number;
-    data: { book_id: number; items: TOCItem[] };
-  }>(`/books/${bookId}/toc`);
+export async function getBookTOC(bookHash: string): Promise<{ book_hash: string; items: TOCItem[] }> {
+  const response = await apiGet<{ code: number; data: { book_hash: string; items: TOCItem[] } }>(`/books/${bookHash}/toc`);
   return response.data;
 }
 
-export async function getChapterContent(
-  bookId: number,
-  contentId: number,
-): Promise<ChapterContent> {
-  const response = await apiGet<{ code: number; data: ChapterContent }>(
-    `/books/${bookId}/contents/${contentId}`,
-  );
+export async function getChapterContent(bookHash: string, contentId: number): Promise<ChapterContent> {
+  const response = await apiGet<{ code: number; data: ChapterContent }>(`/books/${bookHash}/contents/${contentId}`);
   return response.data;
 }

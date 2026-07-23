@@ -1,6 +1,6 @@
 """AI 划词接口"""
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter
 
 from app.schemas.common import success, ApiResponse
 from app.schemas.ai import AIExplainRequest, AIExplainResponse, AIHealthResponse
@@ -12,7 +12,6 @@ router = APIRouter(prefix="/ai", tags=["AI 划词"])
 
 @router.post("/explain", response_model=ApiResponse)
 async def ai_explain(req: AIExplainRequest):
-    """AI 划词解读"""
     try:
         service = AIService()
         result = service.explain(req)
@@ -25,6 +24,5 @@ async def ai_explain(req: AIExplainRequest):
 
 @router.get("/health", response_model=ApiResponse)
 async def ai_health():
-    """AI 服务健康检查"""
     available = AIService.health()
     return success(data=AIHealthResponse(available=available).model_dump())

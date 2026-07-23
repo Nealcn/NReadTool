@@ -34,6 +34,10 @@ export const DEFAULT_AI_SETTINGS: AISettings = {
   openrouterModel: '',
   openrouterEmbeddingModel: '',
 
+  deepseekBaseUrl: 'https://api.deepseek.com/v1',
+  deepseekModel: 'deepseek-chat',
+  deepseekEmbeddingModel: '',
+
   spoilerProtection: true,
   maxContextChunks: 10,
   indexingMode: 'on-demand',

@@ -1,20 +1,17 @@
-"""AI 聊天服务 - 多轮对话"""
+"""AI 聊天服务 - 多轮对话 + 对话 CRUD"""
 
+from typing import List
 from openai import OpenAI
+from sqlalchemy.orm import Session
 
 from app.config import settings
 from app.core.exceptions import AIServiceUnavailableException
+from app.models.ai import AIConversation, AIMessage
+from app.schemas.ai import AIConversationCreate, AIConversationResponse, AIMessageCreate, AIMessageResponse
 
-# 系统提示词：阅读助手
 SYSTEM_PROMPT = """你是一个专业的阅读助手，擅长帮助读者理解书籍内容。
 你可以根据用户选中的文本和对话历史，提供准确的解释、分析和回答。
-回答应简洁清晰，使用中文，适当使用 Markdown 格式增强可读性。
-
-当前的对话上下文：
-- 用户选中了一段文本让你解读
-- 你可以参考对话历史来理解用户的问题
-- 首条消息通常是对选中文本的解释
-- 后续问题可能是在之前讨论基础上的追问"""
+回答应简洁清晰，使用中文，适当使用 Markdown 格式增强可读性。"""
 
 
 class AIChatService:
@@ -23,26 +20,18 @@ class AIChatService:
     def __init__(self):
         if not settings.DEEPSEEK_API_KEY:
             raise AIServiceUnavailableException("DeepSeek API Key 未配置")
-
         self.client = OpenAI(
             api_key=settings.DEEPSEEK_API_KEY,
             base_url=settings.DEEPSEEK_BASE_URL,
             timeout=settings.AI_REQUEST_TIMEOUT,
         )
 
-    def chat(self, messages: list[dict], book_id: int = None, chapter_title: str = None) -> str:
-        """多轮对话
-
-        messages: [
-            {"role": "user", "content": "解释这句话：..."},
-            {"role": "assistant", "content": "..."},
-            {"role": "user", "content": "接着说"},
-        ]
-        """
+    def chat(self, messages: list[dict], book_hash: str = None, chapter_title: str = None) -> str:
+        """多轮对话"""
         system = SYSTEM_PROMPT
         context_parts = []
-        if book_id:
-            context_parts.append(f"书籍 ID: {book_id}")
+        if book_hash:
+            context_parts.append(f"书籍: {book_hash}")
         if chapter_title:
             context_parts.append(f"当前章节: {chapter_title}")
         if context_parts:
@@ -51,10 +40,7 @@ class AIChatService:
         try:
             response = self.client.chat.completions.create(
                 model=settings.AI_MODEL,
-                messages=[
-                    {"role": "system", "content": system},
-                    *messages,
-                ],
+                messages=[{"role": "system", "content": system}, *messages],
                 max_tokens=settings.AI_MAX_TOKENS,
                 temperature=0.3,
             )
@@ -65,7 +51,31 @@ class AIChatService:
             raise AIServiceUnavailableException(f"AI 服务调用失败: {str(e)}")
 
         content = response.choices[0].message.content
-        if not content:
-            content = "暂无法回答该问题，请重新尝试。"
+        return content or "暂无法回答该问题，请重新尝试。"
 
-        return content
+    # ---- 对话 CRUD ----
+
+    def create_conversation(self, db: Session, book_hash: str, device_id: str, req: AIConversationCreate) -> AIConversationResponse:
+        conv = AIConversation(id=req.id, book_hash=book_hash, device_id=device_id, title=req.title)
+        db.add(conv)
+        db.commit()
+        db.refresh(conv)
+        return AIConversationResponse.model_validate(conv)
+
+    def list_conversations(self, db: Session, book_hash: str, device_id: str) -> List[AIConversationResponse]:
+        convs = db.query(AIConversation).filter(
+            AIConversation.book_hash == book_hash,
+            AIConversation.device_id == device_id,
+        ).order_by(AIConversation.updated_at.desc()).all()
+        return [AIConversationResponse.model_validate(c) for c in convs]
+
+    def add_message(self, db: Session, conversation_id: str, req: AIMessageCreate) -> AIMessageResponse:
+        msg = AIMessage(id=req.id, conversation_id=conversation_id, role=req.role, content=req.content)
+        db.add(msg)
+        db.commit()
+        db.refresh(msg)
+        return AIMessageResponse.model_validate(msg)
+
+    def get_messages(self, db: Session, conversation_id: str) -> List[AIMessageResponse]:
+        msgs = db.query(AIMessage).filter(AIMessage.conversation_id == conversation_id).order_by(AIMessage.created_at).all()
+        return [AIMessageResponse.model_validate(m) for m in msgs]

@@ -1,4 +1,4 @@
-"""书籍相关 Schema"""
+"""书籍相关 Schema — 主键改为 file_hash"""
 
 from datetime import datetime
 from typing import Optional, List
@@ -7,8 +7,7 @@ from pydantic import BaseModel
 
 
 class BookInfo(BaseModel):
-    """书籍信息"""
-    id: int
+    file_hash: str
     title: str
     author: Optional[str] = None
     cover_image: Optional[str] = None
@@ -22,8 +21,7 @@ class BookInfo(BaseModel):
 
 
 class BookDetail(BaseModel):
-    """书籍详情"""
-    id: int
+    file_hash: str
     title: str
     author: Optional[str] = None
     cover_image: Optional[str] = None
@@ -43,31 +41,26 @@ class BookDetail(BaseModel):
 
 
 class BookRenameRequest(BaseModel):
-    """重命名请求"""
     title: str
 
 
 class TOCItem(BaseModel):
-    """章节目录项"""
     spine_index: int
     content_id: int
     title: str
 
 
 class TOCResponse(BaseModel):
-    """章节目录"""
-    book_id: int
+    book_hash: str
     items: List[TOCItem]
 
 
 class ChapterContent(BaseModel):
-    """章节内容"""
     spine_index: int
     title: Optional[str] = None
     html_content: str
 
 
 class BookListResponse(BaseModel):
-    """书籍列表"""
     books: List[BookInfo]
     total: int

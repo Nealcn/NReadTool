@@ -1,25 +1,54 @@
-"""AI 划词 Schema"""
+"""AI 对话 Schema"""
 
-from typing import Optional, Literal
+from datetime import datetime
+from typing import Optional, List
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
+
+
+class AIConversationCreate(BaseModel):
+    id: str  # 前端生成的 UUID
+    title: Optional[str] = None
+
+
+class AIConversationResponse(BaseModel):
+    id: str
+    book_hash: str
+    title: Optional[str] = None
+    created_at: datetime
+    updated_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+class AIMessageCreate(BaseModel):
+    id: str  # 前端生成的 UUID
+    role: str  # user / assistant
+    content: str
+
+
+class AIMessageResponse(BaseModel):
+    id: str
+    conversation_id: str
+    role: str
+    content: str
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
 
 
 class AIExplainRequest(BaseModel):
-    """AI 解读请求"""
-    text: str = Field(..., max_length=2000, description="用户选中文本（≤2000字）")
-    type: Literal["word", "sentence", "grammar", "background"] = "word"
-    book_id: Optional[int] = None
-    chapter_title: Optional[str] = None
+    text: str
+    type: str = "sentence"
 
 
 class AIExplainResponse(BaseModel):
-    """AI 解读响应"""
     explanation: str
     type: str
     model: str = "deepseek-chat"
 
 
 class AIHealthResponse(BaseModel):
-    """AI 健康检查响应"""
     available: bool

@@ -86,8 +86,6 @@ import Alert from '@/components/Alert';
 import ModalPortal from '@/components/ModalPortal';
 import { useFileSelector } from '@/hooks/useFileSelector';
 import { parseMrexpt } from '@/utils/mrexpt';
-import { aiExplain } from '@/services/api/ai';
-import AIChatDialog from './AIChatDialog';
 import {
   convertMrexptEntriesToBookNotes,
   mergeImportedBookNotes,
@@ -161,8 +159,6 @@ const Annotator: React.FC<{ bookKey: string; contentInsets: Insets }> = ({
   const [showExportDialog, setShowExportDialog] = useState(false);
   const [showImportDialog, setShowImportDialog] = useState(false);
   const [importingMrexpt, setImportingMrexpt] = useState(false);
-  const [showAIChat, setShowAIChat] = useState(false);
-  const [aiChatText, setAIChatText] = useState("");
   // "Clear Annotations" confirm dialog. Hosted here (and not in BookMenu)
   // because the menu unmounts the moment the user picks the entry, which
   // would otherwise tear down the dialog state immediately.
@@ -1116,9 +1112,9 @@ const Annotator: React.FC<{ bookKey: string; contentInsets: Insets }> = ({
   };
 
   const handleAIExplain = () => {
-    if (!selection?.text) return;
-    setAIChatText(selection.text.trim().substring(0, 2000));
-    setShowAIChat(true);
+    // 打开右侧笔记本，切换到 AI 对话标签
+    useNotebookStore.getState().setNotebookVisible(true);
+    useNotebookStore.getState().setNotebookActiveTab('ai');
   };
 
   const handleHighlight = (update = false, highlightStyle?: HighlightStyle): BookNote | null => {
@@ -1885,16 +1881,6 @@ const Annotator: React.FC<{ bookKey: string; contentInsets: Insets }> = ({
           </div>
         </div>
       )}
-      <AIChatDialog
-        isOpen={showAIChat}
-        selectedText={aiChatText}
-        bookId={bookData.book?.id}
-        chapterTitle={progress?.sectionLabel}
-        onClose={() => setShowAIChat(false)}
-      />
-
-
-
 
 
 

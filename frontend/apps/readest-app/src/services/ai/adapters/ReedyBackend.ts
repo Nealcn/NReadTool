@@ -190,8 +190,18 @@ function randomSessionId(): string {
  */
 function adaptEmbeddingModel(settings: AISettings): ReedyEmbeddingModel {
   const provider = getAIProvider(settings);
-  const vercelModel = provider.getEmbeddingModel();
   const id = embeddingModelIdFor(settings);
+  // 如果 embedding 模型未配置（如 DeepSeek 不支持），返回空桩
+  if (!id) {
+    return {
+      id: 'none',
+      dimensions: 0,
+      async embed(texts: string[]): Promise<number[][]> {
+        throw new Error('Embeddings not available for the current provider. Disable Reedy retrieval or configure an embedding model.');
+      },
+    };
+  }
+  const vercelModel = provider.getEmbeddingModel();
   const batchSize = settings.provider === 'ollama' ? 4 : 16;
 
   // Cache the dim after the first round-trip so we don't re-probe per batch.
@@ -238,6 +248,8 @@ function embeddingModelIdFor(settings: AISettings): string {
       return settings.aiGatewayEmbeddingModel || 'openai/text-embedding-3-small';
     case 'openrouter':
       return settings.openrouterEmbeddingModel || 'openai/text-embedding-3-small';
+    case 'deepseek':
+      return settings.deepseekEmbeddingModel || '';
   }
 }
 

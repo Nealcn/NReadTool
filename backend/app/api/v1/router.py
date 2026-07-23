@@ -7,6 +7,8 @@ from app.api.v1.reading import router as reading_router
 from app.api.v1.ai import router as ai_router
 from app.api.v1.ai_chat import router as ai_chat_router
 from app.api.v1.devices import router as devices_router
+from app.api.v1.annotations import router as annotations_router
+from app.api.v1.settings import router as settings_router
 from app.api.v1.tts import router as tts_router
 
 api_router = APIRouter(prefix="/api/v1")
@@ -15,4 +17,6 @@ api_router.include_router(reading_router)
 api_router.include_router(ai_router)
 api_router.include_router(ai_chat_router)
 api_router.include_router(devices_router)
+api_router.include_router(annotations_router)
+api_router.include_router(settings_router)
 api_router.include_router(tts_router)
