@@ -1,6 +1,7 @@
 import clsx from 'clsx';
 import { useEffect, useState } from 'react';
 import { MdCheckCircle, MdCheckCircleOutline } from 'react-icons/md';
+import { LuUpload } from 'react-icons/lu';
 import {
   LiaCloudUploadAltSolid,
   LiaCloudDownloadAltSolid,
@@ -17,7 +18,8 @@ import { useResponsiveSize } from '@/hooks/useResponsiveSize';
 import { LibraryCoverFitType, LibraryViewModeType } from '@/types/settings';
 import { navigateToLogin } from '@/utils/nav';
 import { isReadestCloudStorageActive } from '@/services/sync/cloudSyncProvider';
-import { formatAuthors, formatDescription, formatSeries } from '@/utils/book';
+import { uploadBook } from '@/services/api/books';
+import { formatAuthors, formatDescription, formatSeries, getLocalBookFilename } from '@/utils/book';
 import ReadingProgress from './ReadingProgress';
 import BookCover from '@/components/BookCover';
 
@@ -158,6 +160,35 @@ const BookItem: React.FC<BookItemProps> = ({
             <ReadingProgress book={book} showTimeRemaining={showTimeRemaining} />
           )}
           <div className='flex shrink-0 items-center justify-center gap-x-2'>
+            <button
+              aria-label={_('Upload to Server')}
+              className='-m-2 p-2 sm:opacity-0 sm:group-hover:opacity-100'
+              onPointerDown={(e) => e.stopPropagation()}
+              onClick={async () => {
+                try {
+                  const managedPath = getLocalBookFilename(book);
+                  const fileObj = await appService?.openFile(managedPath, 'Books', managedPath);
+                  if (!fileObj) {
+                    console.warn('Upload: file not found for', book.title);
+                    return;
+                  }
+                  const file = fileObj instanceof File ? fileObj : new File([fileObj], managedPath.split('/').pop() || 'book.epub');
+                  await uploadBook(file);
+                  console.log('Uploaded:', book.title);
+                } catch (err: unknown) {
+                  // 后端返回"已存在"不算错误
+                  const msg = err instanceof Error ? err.message : String(err);
+                  if (msg.includes('40003') || msg.includes('请勿重复上传')) {
+                    console.log('Already on server:', book.title);
+                  } else {
+                    console.error('Upload failed:', msg);
+                  }
+                }
+              }}
+              title={_('Upload to Server')}
+            >
+              <LuUpload size={iconSize15} />
+            </button>
             {!appService?.isMobile && (
               <button
                 aria-label={_('Show Book Details')}

@@ -408,6 +408,27 @@ export class WebAppService extends BaseAppService {
     return window.confirm(message);
   }
 
+  // Cache of open database connections keyed by OPFS file name.
+  // Prevents concurrent createSyncAccessHandle calls on the same OPFS file,
+  // which the browser rejects (NoModificationAllowedError).
+  // Stored on `window` so the cache survives Next.js HMR (which redefines
+  // the class and resets `static` fields but keeps the `window` object).
+  static #getDbCache(): Map<string, Promise<DatabaseService>> {
+    const g = globalThis as Record<string, unknown>;
+    return (g.__READEST_DB_CACHE__ ??= new Map()) as Map<string, Promise<DatabaseService>>;
+  }
+  static #getOpenQueue(): Promise<unknown> {
+    const g = globalThis as Record<string, unknown>;
+    return (g.__READEST_DB_QUEUE__ ??= Promise.resolve()) as Promise<unknown>;
+  }
+  static #setOpenQueue(p: Promise<unknown>): void {
+    (globalThis as Record<string, unknown>).__READEST_DB_QUEUE__ = p;
+  }
+  // Max attempts per open: browser may still hold stale OPFS handles from a
+  // previous page session; retry with backoff.
+  static #OPEN_RETRIES = 5;
+  static #OPEN_BACKOFF_MS = 600;
+
   async openDatabase(
     schema: SchemaType,
     path: string,
@@ -419,6 +440,54 @@ export class WebAppService extends BaseAppService {
     // Turso WASM connector passes the whole string as a single OPFS handle
     // name without traversing directories. Flatten to a safe single segment.
     const opfsName = fullPath.replace(/[/\\]+/g, '_').replace(/^_+/, '');
+    const cacheKey = `${opfsName}::${opts ? JSON.stringify(opts) : ''}`;
+    const cache = WebAppService.#getDbCache();
+    const cached = cache.get(cacheKey);
+    if (cached) return cached;
+    // Chain onto the serialisation queue.  Must keep the chain alive even when
+    // a previous open rejects, otherwise every subsequent call also rejects.
+    const prev = WebAppService.#getOpenQueue();
+    const promise = prev.then(
+      () => this.#openDbWithRetry(opfsName, schema, opts),
+      // Swallow the rejection from a prior failed open so the chain stays
+      // live.  The *caller* still gets the rejection for their own file via
+      // their own promise below.
+      () => this.#openDbWithRetry(opfsName, schema, opts),
+    );
+    WebAppService.#setOpenQueue(promise.catch(() => { /* keep chain alive */ }));
+    // Evict from cache on failure so retry from the next caller works.
+    promise.catch(() => cache.delete(cacheKey));
+    cache.set(cacheKey, promise);
+    return promise;
+  }
+
+  async #openDbWithRetry(
+    opfsName: string,
+    schema: SchemaType,
+    opts?: DatabaseOpts,
+    attempt = 1,
+  ): Promise<DatabaseService> {
+    try {
+      return await this.#openDb(opfsName, schema, opts);
+    } catch (err: unknown) {
+      const isOpfsLock = err instanceof DOMException &&
+        err.name === 'NoModificationAllowedError';
+      if (isOpfsLock && attempt < WebAppService.#OPEN_RETRIES) {
+        console.warn(
+          `[opfs] ${opfsName} locked (stale handle), retrying in ${WebAppService.#OPEN_BACKOFF_MS}ms (attempt ${attempt}/${WebAppService.#OPEN_RETRIES - 1})`,
+        );
+        await new Promise((r) => setTimeout(r, WebAppService.#OPEN_BACKOFF_MS * attempt));
+        return this.#openDbWithRetry(opfsName, schema, opts, attempt + 1);
+      }
+      throw err;
+    }
+  }
+
+  async #openDb(
+    opfsName: string,
+    schema: SchemaType,
+    opts?: DatabaseOpts,
+  ): Promise<DatabaseService> {
     const { WebDatabaseService } = await import('./database/webDatabaseService');
     const db = await WebDatabaseService.open(opfsName, opts);
     const { migrate } = await import('./database/migrate');
