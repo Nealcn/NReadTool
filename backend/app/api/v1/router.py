@@ -10,6 +10,7 @@ from app.api.v1.devices import router as devices_router
 from app.api.v1.annotations import router as annotations_router
 from app.api.v1.settings import router as settings_router
 from app.api.v1.tts import router as tts_router
+from app.api.v1.auth import router as auth_router
 
 api_router = APIRouter(prefix="/api/v1")
 api_router.include_router(books_router)
@@ -20,3 +21,4 @@ api_router.include_router(devices_router)
 api_router.include_router(annotations_router)
 api_router.include_router(settings_router)
 api_router.include_router(tts_router)
+api_router.include_router(auth_router)

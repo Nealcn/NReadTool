@@ -63,6 +63,21 @@ class AIServiceUnavailableException(AppException):
         super().__init__(code=50003, message=message, status_code=503)
 
 
+class InvalidCredentialsException(AppException):
+    def __init__(self):
+        super().__init__(code=40101, message="邮箱或密码错误", status_code=401)
+
+
+class EmailAlreadyExistsException(AppException):
+    def __init__(self):
+        super().__init__(code=40102, message="该邮箱已被注册", status_code=409)
+
+
+class UnauthorizedException(AppException):
+    def __init__(self):
+        super().__init__(code=40103, message="未登录或登录已过期，请重新登录", status_code=401)
+
+
 async def app_exception_handler(request: Request, exc: AppException):
     return JSONResponse(
         status_code=exc.status_code,

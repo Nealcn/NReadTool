@@ -126,6 +126,38 @@ class EpubService:
         return book
 
     @staticmethod
+    def update_metadata(
+        db: Session,
+        file_hash: str,
+        title: str | None = None,
+        author: str | None = None,
+        publisher: str | None = None,
+        language: str | None = None,
+        isbn: str | None = None,
+        description: str | None = None,
+        cover_image: str | None = None,
+    ) -> Book:
+        """更新书籍元数据"""
+        book = EpubService.get_book(db, file_hash)
+        if title is not None:
+            book.title = title
+        if author is not None:
+            book.author = author
+        if publisher is not None:
+            book.publisher = publisher
+        if language is not None:
+            book.language = language
+        if isbn is not None:
+            book.isbn = isbn
+        if description is not None:
+            book.description = description
+        if cover_image is not None:
+            book.cover_image = cover_image
+        db.commit()
+        db.refresh(book)
+        return book
+
+    @staticmethod
     def delete_book(db: Session, file_hash: str) -> None:
         """软删除书籍"""
         book = EpubService.get_book(db, file_hash)

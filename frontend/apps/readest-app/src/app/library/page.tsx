@@ -45,7 +45,6 @@ import { useBooksSync } from './hooks/useBooksSync';
 import { useLibraryFileSync } from './hooks/useLibraryFileSync';
 import { useBookTransferActions } from './hooks/useBookTransferActions';
 import { useAutoImportFolders } from './hooks/useAutoImportFolders';
-import { useInboxDrainer } from '@/hooks/useInboxDrainer';
 import { useOPDSSubscriptions } from '@/hooks/useOPDSSubscriptions';
 import { useCloudLibrarySync } from '@/hooks/useCloudLibrarySync';
 import { useBookDataStore } from '@/store/bookDataStore';
@@ -108,9 +107,6 @@ import ImportFromFolderDialog, {
 import ImportFromUrlDialog from './components/ImportFromUrlDialog';
 import NowPlayingBar from './components/NowPlayingBar';
 import { ttsSessionManager } from '@/services/tts';
-import { convertToEpubWithWorker } from '@/services/send/conversion/conversionWorker';
-import { getClipOptions } from '@/services/send/clipOptions';
-import { invoke } from '@tauri-apps/api/core';
 import useShortcuts from '@/hooks/useShortcuts';
 import { useReplicaPull } from '@/hooks/useReplicaPull';
 import { useCustomFonts } from '@/hooks/useCustomFonts';
@@ -310,7 +306,6 @@ const LibraryPageContent = ({ searchParams }: { searchParams: ReadonlyURLSearchP
   // parity with useBooksSync. No-op when no provider is enabled.
   useLibraryFileSync();
   const { checkOPDSSubscriptions } = useOPDSSubscriptions();
-  useInboxDrainer();
   const { isDragging } = useDragDropImport();
 
   usePullToRefresh(
@@ -1127,6 +1122,19 @@ const LibraryPageContent = ({ searchParams }: { searchParams: ReadonlyURLSearchP
     metadata.coverImageBlobUrl = undefined;
     metadata.coverImageFile = undefined;
     await updateBook(envConfig, updatedBook);
+
+    // 同步元数据到后端（非阻塞，仅对已在后端的书有效）
+    try {
+      const { updateBookMetadata } = await import('@/services/api/books');
+      updateBookMetadata(book.hash, {
+        title: typeof metadata.title === 'string' ? metadata.title : undefined,
+        author: typeof metadata.author === 'string' ? metadata.author : undefined,
+        publisher: metadata.publisher,
+        language: typeof metadata.language === 'string' ? metadata.language : undefined,
+        isbn: metadata.isbn,
+        description: metadata.description,
+      }).catch(() => {});
+    } catch { /* 静默 */ }
   };
 
   const handleImportBooksFromFiles = async () => {
@@ -1140,34 +1148,8 @@ const LibraryPageContent = ({ searchParams }: { searchParams: ReadonlyURLSearchP
   };
 
   const handleImportBookFromUrl = async (url: string) => {
-    // Tauri-only. Routes through the Rust `clip_url` command which spawns
-    // a hidden Tauri webview, loads the URL with the real browser engine
-    // (correct TLS fingerprint, runs the page's JS, executes any
-    // Cloudflare challenge), then captures `document.documentElement
-    // .outerHTML` and returns it. End to end this is exactly the local-
-    // file path — no inbox, no upload-then-download, no server round-trip
-    // — `importBooks` is the same call drag-drop uses.
-    if (!isTauriAppPlatform()) return;
-    console.log('[clip] start', { url });
-    setIsSelectMode(false);
-    const t0 = performance.now();
-    const html = await invoke<string>('clip_url', { url, options: getClipOptions(_) });
-    console.log('[clip] fetched', {
-      bytes: html.length,
-      ms: Math.round(performance.now() - t0),
-    });
-    const t1 = performance.now();
-    const book = await convertToEpubWithWorker({ kind: 'page', html, url });
-    console.log('[clip] epub built', {
-      title: book.title,
-      author: book.author || undefined,
-      bytes: book.file.size,
-      ms: Math.round(performance.now() - t1),
-    });
-    const groupId = searchParams?.get('group') || '';
-    console.log('[clip] importing locally', { name: book.file.name, groupId: groupId || null });
-    await importBooks([{ file: book.file }], groupId);
-    console.log('[clip] done');
+    // Tauri-only: web 版不支持从 URL 导入
+    console.log('[clip] not supported on web', { url });
   };
 
   const handleImportBooksFromDirectory = async (dirPath?: string) => {

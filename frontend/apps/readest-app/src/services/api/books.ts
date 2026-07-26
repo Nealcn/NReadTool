@@ -70,6 +70,21 @@ export async function deleteBook(bookHash: string): Promise<void> {
   await apiDelete(`/books/${bookHash}`);
 }
 
+export interface BookMetadataUpdate {
+  title?: string;
+  author?: string;
+  publisher?: string;
+  language?: string;
+  isbn?: string;
+  description?: string;
+  cover_image?: string;
+}
+
+export async function updateBookMetadata(bookHash: string, data: BookMetadataUpdate): Promise<BookDetail> {
+  const response = await apiPut<{ code: number; data: BookDetail }>(`/books/${bookHash}/metadata`, data);
+  return response.data;
+}
+
 export async function getBookTOC(bookHash: string): Promise<{ book_hash: string; items: TOCItem[] }> {
   const response = await apiGet<{ code: number; data: { book_hash: string; items: TOCItem[] } }>(`/books/${bookHash}/toc`);
   return response.data;

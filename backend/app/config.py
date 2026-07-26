@@ -26,6 +26,11 @@ class Settings(BaseSettings):
     # 限流
     AI_RATE_LIMIT: int = 10  # 次/分钟/设备
 
+    # JWT 认证
+    JWT_SECRET_KEY: str = "nreadtool-dev-secret-key-change-in-production"
+    JWT_ALGORITHM: str = "HS256"
+    JWT_EXPIRATION_HOURS: int = 720  # 30 天
+
     class Config:
         env_file = ".env"
         env_file_encoding = "utf-8"

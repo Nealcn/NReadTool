@@ -1,32 +1,30 @@
-import { getAccessToken } from './access';
+/** fetch 工具 */
 
-export const fetchWithTimeout = (url: string, options: RequestInit = {}, timeout = 10000) => {
-  const controller = new AbortController();
-  const id = setTimeout(() => controller.abort('Request timed out'), timeout);
-
-  return fetch(url, {
-    ...options,
-    signal: controller.signal,
-  }).finally(() => clearTimeout(id));
-};
-
-export const fetchWithAuth = async (url: string, options: RequestInit) => {
-  const token = await getAccessToken();
-  if (!token) {
-    throw new Error('Not authenticated');
-  }
-  const headers = {
-    ...options.headers,
-    Authorization: `Bearer ${token}`,
+export async function fetchWithAuth(
+  url: string,
+  options: RequestInit = {},
+): Promise<Response> {
+  const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
+  const headers: Record<string, string> = {
+    ...(options.headers as Record<string, string>),
   };
-
-  const response = await fetch(url, { ...options, headers });
-
-  if (!response.ok) {
-    const errorData = await response.json();
-    console.error('Error:', errorData.error || response.statusText);
-    throw new Error(errorData.error || 'Request failed');
+  if (token) {
+    headers["Authorization"] = `Bearer ${token}`;
   }
+  return fetch(url, { ...options, headers });
+}
 
-  return response;
-};
+export async function fetchWithTimeout(
+  url: string,
+  options: RequestInit & { timeout?: number } = {},
+): Promise<Response> {
+  const { timeout = 10000, ...rest } = options;
+  const controller = new AbortController();
+  const id = setTimeout(() => controller.abort(), timeout);
+  try {
+    const response = await fetch(url, { ...rest, signal: controller.signal });
+    return response;
+  } finally {
+    clearTimeout(id);
+  }
+}

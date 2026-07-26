@@ -44,6 +44,16 @@ class BookRenameRequest(BaseModel):
     title: str
 
 
+class BookMetadataUpdate(BaseModel):
+    title: Optional[str] = None
+    author: Optional[str] = None
+    publisher: Optional[str] = None
+    language: Optional[str] = None
+    isbn: Optional[str] = None
+    description: Optional[str] = None
+    cover_image: Optional[str] = None  # base64 encoded image
+
+
 class TOCItem(BaseModel):
     spine_index: int
     content_id: int

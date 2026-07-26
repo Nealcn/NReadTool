@@ -9,7 +9,8 @@ from app.core.database import get_db
 from app.core.exceptions import InvalidFileTypeException, FileTooLargeException
 from app.schemas.common import success, ApiResponse
 from app.schemas.book import (
-    BookInfo, BookDetail, BookRenameRequest, TOCResponse, TOCItem, ChapterContent, BookListResponse,
+    BookInfo, BookDetail, BookRenameRequest, BookMetadataUpdate,
+    TOCResponse, TOCItem, ChapterContent, BookListResponse,
 )
 from app.services.epub_service import EpubService
 from app.utils.file_utils import validate_file_extension, validate_file_size
@@ -73,6 +74,24 @@ async def rename_book(book_hash: str, req: BookRenameRequest, db: Session = Depe
     """重命名书籍"""
     book = EpubService.rename_book(db, book_hash, req.title)
     return success(data=BookInfo.model_validate(book).model_dump(), message="重命名成功")
+
+
+@router.put("/{book_hash}/metadata", response_model=ApiResponse)
+async def update_book_metadata(
+    book_hash: str, req: BookMetadataUpdate, db: Session = Depends(get_db),
+):
+    """更新书籍元数据（书名、作者、出版社、语言、ISBN、描述、封面等）"""
+    book = EpubService.update_metadata(
+        db, book_hash,
+        title=req.title,
+        author=req.author,
+        publisher=req.publisher,
+        language=req.language,
+        isbn=req.isbn,
+        description=req.description,
+        cover_image=req.cover_image,
+    )
+    return success(data=BookDetail.model_validate(book).model_dump(), message="元数据更新成功")
 
 
 @router.delete("/{book_hash}", response_model=ApiResponse)

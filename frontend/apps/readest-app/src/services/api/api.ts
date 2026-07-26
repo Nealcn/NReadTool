@@ -17,12 +17,18 @@ const api: AxiosInstance = axios.create({
   },
 });
 
-// 请求拦截器 - 自动注入设备 ID
+// 请求拦截器 - 自动注入设备 ID + JWT
 api.interceptors.request.use(
   (config) => {
     const deviceId = getDeviceId();
     if (deviceId) {
       config.headers["X-Device-Id"] = deviceId;
+    }
+    if (typeof window !== "undefined") {
+      const token = localStorage.getItem("token");
+      if (token) {
+        config.headers["Authorization"] = `Bearer ${token}`;
+      }
     }
     return config;
   },
@@ -34,16 +40,27 @@ api.interceptors.response.use(
   (response) => response.data,
   (error: AxiosError<{ message?: string; code?: number }>) => {
     if (!error.response) {
-      // 网络错误
       return Promise.reject({
         code: -1,
         message: "网络连接失败，请检查网络后重试",
       });
     }
 
-    const { status, data } = error.response;
-    const message = data?.message || getDefaultErrorMessage(status);
+    const { status, headers, config } = error.response;
+    const contentType = headers?.["content-type"] || "";
+    const requestUrl = `${config?.baseURL || ""}${config?.url || ""}`;
 
+    // 检查响应是否为 JSON
+    if (!contentType.includes("application/json")) {
+      console.error(`[API] ${requestUrl} 返回 ${contentType} (status ${status})`);
+      return Promise.reject({
+        code: status,
+        message: `后端服务异常 (${requestUrl})，请确认后端已启动`,
+      });
+    }
+
+    const data = error.response.data as { message?: string; code?: number } | undefined;
+    const message = data?.message || getDefaultErrorMessage(status);
     return Promise.reject({
       code: data?.code || status,
       message,
